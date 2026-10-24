@@ -1,0 +1,24 @@
+#+TITLE: Architecture plan for P2P lib
+#+DESCRIPTION: ---
+#+DATE: <2026-10-23 Fri>
+
+* STEPS
+
+* MILESTONES
+** NEXT WebSocket Room Connection
+*** DONE Creating websocket route.
+CLOSED: [2026-10-24 Sat 10:38]
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-10-24 Sat 10:38]
+:END:
+*** DONE Establishing working websocket connection.
+CLOSED: [2026-10-24 Sat 10:38]
+:LOGBOOK:
+- State "DONE"       from              [2026-10-24 Sat 10:38]
+:END:
+*** NEXT Users on same websocket room should be able to text.
+:LOGBOOK:
+- State "DONE"       from "NEXT"       [2026-10-24 Sat 10:39]
+- State "NEXT"       from "WAIT"       [2026-10-24 Sat 10:39]
+- State "WAIT"       from              [2026-10-24 Sat 10:39]
+:END:
