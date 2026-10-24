@@ -1,17 +1,18 @@
 use dashmap::DashMap;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 use tokio::sync::broadcast;
 
 #[derive(Clone)]
-struct JoinPayload {}
+pub struct JoinPayload {}
 
 #[derive(Clone)]
-enum ChannelMessage {
+pub enum ChannelMessage {
     Join(JoinPayload),
+    Broadcast(String),
 }
 
 pub type Sender = tokio::sync::broadcast::Sender<ChannelMessage>;
-pub type Receiver = tokio::sync::broadcast::Receiver<ChannelMessage>;
+pub type _Receiver = tokio::sync::broadcast::Receiver<ChannelMessage>;
 
 struct ChannelStoreData {
     tx: Sender,
@@ -20,16 +21,12 @@ struct ChannelStoreData {
 
 type ChannelStoreType = DashMap<usize, ChannelStoreData>;
 
-static CHANNEL_STORE: OnceLock<ChannelStoreType> = OnceLock::new();
+static CHANNEL_STORE: LazyLock<ChannelStoreType> = LazyLock::new(|| DashMap::new());
 
-pub fn get_channel_store() -> &'static ChannelStoreType {
-    CHANNEL_STORE.get_or_init(|| DashMap::new())
-}
-
-pub fn create_channel(room_id: usize) -> Sender {
-    let (tx, rx) = broadcast::channel::<ChannelMessage>(32);
-    let store = get_channel_store();
-    store.insert(
+fn create_channel(room_id: usize) -> Sender {
+    println!("CREATING CHANNEL");
+    let (tx, _) = broadcast::channel::<ChannelMessage>(32);
+    CHANNEL_STORE.insert(
         room_id,
         ChannelStoreData {
             tx: tx.clone(),
@@ -37,4 +34,37 @@ pub fn create_channel(room_id: usize) -> Sender {
         },
     );
     tx
+}
+
+pub fn join_channel(room_id: usize) -> Sender {
+    let entry = CHANNEL_STORE.get_mut(&room_id);
+    match entry {
+        Some(mut entry) => {
+            entry.member_count += 1;
+            if entry.tx.send(ChannelMessage::Join(JoinPayload {})).is_err() {
+                eprintln!("Failed to send message on existing sender")
+            };
+            return entry.tx.clone();
+        }
+        None => {
+            return create_channel(room_id);
+        }
+    }
+}
+
+pub fn leave_channel(room_id: usize) {
+    println!(
+        "DELETING ROOM, total room count(before delete): {}",
+        CHANNEL_STORE.len()
+    );
+    CHANNEL_STORE.remove_if(&room_id, |_, val| {
+        return val.member_count <= 1;
+    });
+    if let Some(mut val) = CHANNEL_STORE.get_mut(&room_id) {
+        val.member_count -= 1;
+    }
+    println!(
+        "DELETING ROOM, total room count(after delete): {}",
+        CHANNEL_STORE.len()
+    );
 }
